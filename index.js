@@ -30,6 +30,13 @@ try {
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     const celestoraCollection = client.db('pastFinderDB').collection('celestora')
+    
+    const likedCelestoraCollection = client.db('pastFinderDB').collection('likedCelestora');
+
+    await likedCelestoraCollection.createIndex(
+        {celestora_id: 1, applicant_email: 1 },
+        { unique: true }
+    );
 
     // data fetch
     app.get('/celestora', async(req,res)=>{
@@ -45,6 +52,90 @@ try {
         const result =await celestoraCollection.findOne(query);
         res.send(result);
     })
+
+     // Like antiques apis 
+
+     app.get('/likedCelestora', async (req, res) => {
+        const email = req.query.email;
+        const query = { applicant_email: email }
+        const result = await likedCelestoraCollection.find(query).toArray();
+        res.send(result);
+    })
+
+
+    app.post('/likedCelestora', async (req, res) => {
+        const like = req.body; // Get the liked artifact data from the request body
+    
+        try {
+            const result = await likedCelestoraCollection.insertOne(like);
+            res.send(result);
+        } catch (error) {
+            console.error("Error saving liked artifact:", error.message);
+            if (error.code === 11000) { // Handle unique index error
+                res.status(400).send({ error: "Artifact already liked" });
+            } else {
+                res.status(500).send({ error: "Failed to like artifact" });
+            }
+        }
+    });
+    
+
+    // app.get('/likedCelestora/:id', async (req, res) => {
+    //     const { id } = req.params;
+    //     const email = req.query.email;
+    
+    //     const query = { celestora_id: id, applicant_email: email };
+    //     const likedCelestora = await likedCelestoraCollection.findOne(query);
+    
+    //     res.send({ liked: !!likedCelestora });
+    // });
+    
+    app.get('/likedCelestora', async (req, res) => {
+        const email = req.query.email;
+    
+        if (!email) {
+            return res.status(400).send({ error: "Email is required" });
+        }
+    
+        try {
+            const likedArtifacts = await likedCelestoraCollection.find({ applicant_email: email }).toArray();
+    
+            const artifactIds = likedArtifacts.map((item) => item.celestora_id);
+    
+            const artifacts = await celestoraCollection.find({ _id: { $in: artifactIds.map((id) => new ObjectId(id)) } }).toArray();
+    
+            const response = artifacts.map((artifact) => {
+                const likedData = likedArtifacts.find(
+                    (like) => like.celestora_id === artifact._id.toString()
+                );
+                return {
+                    ...artifact,
+                    celestora_id: likedData.celestora_id,
+                    applicant_email: likedData.applicant_email,
+                };
+            });
+    
+            res.send(response);
+        } catch (error) {
+            console.error("Error fetching user-liked artifacts:", error);
+            res.status(500).send({ error: "Failed to fetch user-liked artifacts" });
+        }
+    });
+    
+
+    app.delete('/likedCelestora/:id', async (req, res) => {
+        const { id } = req.params;
+        const email = req.query.email;
+    
+        const query = { celestora_id: id, applicant_email: email };
+        const result = await likedCelestoraCollection.deleteOne(query);
+    
+        if (result.deletedCount > 0) {
+            res.send({ success: true });
+        } else {
+            res.status(404).send({ error: "Like not found" });
+        }
+    });
 
 } finally {
     // Ensures that the client will close when you finish/error
