@@ -38,17 +38,43 @@ try {
         { unique: true }
     );
 
-    // data fetch with search
+    // data fetch with search and email
 
     app.get('/celestora', async (req, res) => {
+        const email = req.query.email;
         const search = req.query.search || ""; 
-        const query = {
-            name: { $regex: search, $options: "i" },
-        };
-        const cursor = celestoraCollection.find(query);
-        const result = await cursor.toArray();
-        res.send(result);
+    
+        const query = {};
+    
+        // Filter by email if provided
+        if (email) {
+            query.userEmail = email;
+        }
+    
+        // Add regex-based search filter if search term is provided
+        if (search) {
+            query.name = { $regex: search, $options: "i" }; // Fixed here
+        }
+    
+        try {
+            const cursor = celestoraCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        } catch (error) {
+            console.error("Error fetching celestoras:", error);
+            res.status(500).send({ success: false, error: error.message });
+        }
     });
+    
+
+    // my artifact data delete
+
+    app.delete('/celestora/:id', async(req,res)=>{
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await celestoraCollection.deleteOne(query);
+        res.send(result);
+      })
 
     // data details
     app.get('/celestora/:id', async(req, res)=> {
@@ -57,6 +83,52 @@ try {
         const result =await celestoraCollection.findOne(query);
         res.send(result);
     })
+    
+    // data post
+    app.post('/celestora',async(req,res)=>{
+        const newCelestora = req.body;
+        console.log(newCelestora);
+        const result = await celestoraCollection.insertOne(newCelestora);
+        res.send(result);
+    })
+
+    // my artifact
+
+// for my artifact to fetch
+
+
+
+// for my artifact update data
+// app.put('/celestora/email/:userEmail', async(req, res)=> {
+//     const userEmail = req.params.userEmail;
+//     const filter ={userEmail: new ObjectId(userEmail)}
+//     const options = {upsert:true};
+//     const updatedCelestora = req.body;
+//     const celestora ={
+//       $set: {
+//         name:updatedCelestora.name, 
+//         image:updatedCelestora.image,  
+//         type:updatedCelestora.type,   
+//         historicalContext:updatedCelestora.historicalContext, 
+//         createdAt:updatedCelestora.createdAt, 
+//         discoveredAt:updatedCelestora.discoveredAt,
+//         discoveredBy:updatedCelestora.discoveredBy,
+//         presentLocation:updatedCelestora.presentLocation,
+//       }
+//     }
+//     const result = await celestoraCollection.updateOne(filter,celestora,options);
+//     res.send(result);
+//   })
+  
+  
+  
+//   // for my artifact delete data
+//   app.delete('/celestora/email/:userEmail', async(req,res)=>{
+//     const userEmail = req.params.userEmail;
+//     const query = {userEmail: new ObjectId(userEmail)}
+//     const result = await sunflowerCollection.deleteOne(query);
+//     res.send(result);
+//   })
 
      // Like antiques apis 
 
