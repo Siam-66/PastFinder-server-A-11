@@ -76,6 +76,23 @@ try {
         res.send(result);
       })
 
+// my artifact update handleUpdate
+
+app.put('/celestora/:id', async (req, res) => {
+    const id = req.params.id;
+    const updatedCelestora = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const update = { $set: updatedCelestora };
+    const options = { upsert: true };
+
+    try {
+        const result = await celestoraCollection.updateOne(filter, update, options);
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ success: false, error: error.message });
+    }
+});
+
     // data details
     app.get('/celestora/:id', async(req, res)=> {
         const id = req.params.id;
@@ -92,43 +109,7 @@ try {
         res.send(result);
     })
 
-    // my artifact
 
-// for my artifact to fetch
-
-
-
-// for my artifact update data
-// app.put('/celestora/email/:userEmail', async(req, res)=> {
-//     const userEmail = req.params.userEmail;
-//     const filter ={userEmail: new ObjectId(userEmail)}
-//     const options = {upsert:true};
-//     const updatedCelestora = req.body;
-//     const celestora ={
-//       $set: {
-//         name:updatedCelestora.name, 
-//         image:updatedCelestora.image,  
-//         type:updatedCelestora.type,   
-//         historicalContext:updatedCelestora.historicalContext, 
-//         createdAt:updatedCelestora.createdAt, 
-//         discoveredAt:updatedCelestora.discoveredAt,
-//         discoveredBy:updatedCelestora.discoveredBy,
-//         presentLocation:updatedCelestora.presentLocation,
-//       }
-//     }
-//     const result = await celestoraCollection.updateOne(filter,celestora,options);
-//     res.send(result);
-//   })
-  
-  
-  
-//   // for my artifact delete data
-//   app.delete('/celestora/email/:userEmail', async(req,res)=>{
-//     const userEmail = req.params.userEmail;
-//     const query = {userEmail: new ObjectId(userEmail)}
-//     const result = await sunflowerCollection.deleteOne(query);
-//     res.send(result);
-//   })
 
      // Like antiques apis 
 
