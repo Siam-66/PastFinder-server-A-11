@@ -121,12 +121,61 @@ app.put('/celestora/:id', async (req, res) => {
     })
 
 
+//  top like data
 
+// Fetch top liked artifacts
+// Fetch top liked artifacts
+app.get('/api/top-liked', async (req, res) => {
+    try {
+        const topLikedArtifacts = await celestoraCollection
+            .find({})
+            .sort({ likeCount: -1 }) // Sort descending by likeCount
+            .limit(6) // Return only 6 results
+            .toArray();
+
+        res.status(200).json(topLikedArtifacts);
+    } catch (error) {
+        console.error("Error fetching top liked artifacts:", error);
+        res.status(500).json({ error: "Failed to fetch top liked artifacts." });
+    }
+});
+
+
+
+// Post like data
 app.post('/likedCelestora', async (req, res) => {
     const like = req.body;
 
     try {
+        // First, check if the user has already liked the artifact
+        const existingLike = await likedCelestoraCollection.findOne({
+            celestora_id: like.celestora_id,
+            applicant_email: like.applicant_email
+        });
+
+        if (existingLike) {
+            return res.status(400).send({ error: "You have already liked this artifact" });
+        }
+
+        // Insert the new like
         const result = await likedCelestoraCollection.insertOne(like);
+
+        // Update the likeCount in the celestora collection
+        const id = like.celestora_id;
+        const query = { _id: new ObjectId(id) };
+        const celestora = await celestoraCollection.findOne(query);
+
+        let newCount = celestora.celestoraCount ? celestora.celestoraCount + 1 : 1;
+
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+            $set: {
+                likeCount: newCount
+            }
+        };
+
+        await celestoraCollection.updateOne(filter, updateDoc);
+
         res.send(result);
     } catch (error) {
         console.error("Error saving liked artifact:", error.message);
@@ -138,6 +187,43 @@ app.post('/likedCelestora', async (req, res) => {
     }
 });
 
+// >>>>>1
+// app.post('/likedCelestora', async (req, res) => {
+//     const like = req.body;
+
+//     try {
+//         const result = await likedCelestoraCollection.insertOne(like);
+
+//         const id = like.celestora_id;
+//         const query = {_id:new ObjectId(id)}
+//         const celestora = await celestoraCollection.findOne(query);
+//         let newCount = 0;
+//         if(celestora.celestoraCount){
+//             newCount = celestora.celestoraCount + 1;
+//         }
+//         else{
+//             newCount = 1;
+//         }
+
+//         const filter = {_id:new ObjectId(id)};
+//         const updateDoc = {
+//             $set:{
+//                 likeCount:newCount
+//             }
+//         }
+//         const updateResult = await celestoraCollection.updateOne(filter,updateDoc,updateResult);
+
+//         res.send(result);
+//     } catch (error) {
+//         console.error("Error saving liked artifact:", error.message);
+//         if (error.code === 11000) {
+//             res.status(400).send({ error: "Artifact already liked" });
+//         } else {
+//             res.status(500).send({ error: "Failed to like artifact" });
+//         }
+//     }
+// });
+
 app.get('/likedCelestora/:id', async (req, res) => {
     const { id } = req.params;
     const email = req.query.email;
@@ -148,6 +234,7 @@ app.get('/likedCelestora/:id', async (req, res) => {
     res.send({ liked: !!likedCelestora });
 });
 
+//delete like data 
 app.delete('/likedCelestora/:id', async (req, res) => {
     const { id } = req.params;
     const email = req.query.email;
